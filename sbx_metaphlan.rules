@@ -1,0 +1,131 @@
+# -*- mode: Snakemake -*-
+
+TARGET_METAPHLAN = expand(str(CLASSIFY_FP/'metaphlan'/'review'/'{sample}_review.txt'), sample = Samples.keys())
+TARGET_METAPHLAN_REPORT = [str(CLASSIFY_FP/'metaphlan'/'taxonomic_assignments.tsv')]
+
+# The original Anaconda environment path is stored here so it can be referred
+# to from inside the special metaphlan environment used in select rules below.
+import os
+import pandas
+CONDA_PREFIX = os.getenv("CONDA_PREFIX")
+
+rule all_metaphlan:
+    input:
+        TARGET_METAPHLAN_REPORT
+
+# An all-samples-in-one summary table, with samples on columns and taxa on
+# rows.
+rule taxonomic_assignment_report:
+    """ generate metaphlan taxonomic assignment table """
+    output:
+        str(CLASSIFY_FP/'metaphlan'/'taxonomic_assignments.tsv')
+    input:
+        fps = expand(str(CLASSIFY_FP/'metaphlan'/'review'/'{sample}_review.txt'), sample = Samples.keys())
+    run:
+        metaphlan_make_report(input.fps, output[0])
+
+# Chunyu's curated version of the metaphlan output file.
+rule metaphlan_review_output:
+    output:
+        meta_ret = str(CLASSIFY_FP/'metaphlan'/'review'/'{sample}_review.txt')
+    input:
+        meta_raw = str(CLASSIFY_FP/'metaphlan'/'raw'/'{sample}_metagenome.txt')
+    run:
+        review_output(input.meta_raw, output.meta_ret)
+
+# Process bowtie2 output to create metaphlan's standard output file.
+rule metaphlan_classify:
+    output:
+        meta_raw = str(CLASSIFY_FP/'metaphlan'/'raw'/'{sample}_metagenome.txt'),
+    input:
+        sambz2 = str(CLASSIFY_FP/'metaphlan'/'raw'/'{sample}.bowtie2.sam.bz2'),
+        dbdir = Cfg['sbx_metaphlan']['db']
+    threads:
+        Cfg['sbx_metaphlan']['threads']
+    conda:
+        "sbx_metaphlan_env.yml"
+    shell:
+        """
+            #if you have the metaphlan environment pre-installed
+            #e.g. "conda create -n metaphlan -c bioconda bowtie2 metaphlan"
+            #then you can uncomment the following line and not "--use-conda" in sunbeam
+            # source ~/.bashrc.conda #should make conda activate work
+            # conda activate metaphlan
+
+            metaphlan2.py \
+            --nproc {threads} \
+            --input_type sam \
+            {input.sambz2} {output.meta_raw}
+        """
+
+# Run bowtie2 against metaphlan's database.  It can handle bzip2 compression
+# automatically (above rule) so we'll include that here too.
+rule metaphlan_bowtie:
+    output:
+        sambz2 = str(CLASSIFY_FP/'metaphlan'/'raw'/'{sample}.bowtie2.sam.bz2')
+    input:
+        pair = expand(str(QC_FP/'decontam'/'{sample}_{rp}.fastq.gz'),
+                      sample = "{sample}",
+                      rp = Pairs),
+        dbdir = Cfg['sbx_metaphlan']['db']
+    threads:
+        Cfg['sbx_metaphlan']['threads']
+    conda:
+        "sbx_metaphlan_env.yml"
+    shell:
+        """
+            #if you have the metaphlan environment pre-installed
+            #e.g. "conda create -n metaphlan -c bioconda bowtie2 metaphlan"
+            #then you can uncomment the following line and not "--use-conda" in sunbeam
+            # source ~/.bashrc.conda #should make conda activate work
+            # conda activate metaphlan
+
+            bowtie2 --sam-no-hd --sam-no-sq --no-unal --very-sensitive \
+            -x "{input.dbdir}/mpa_v20_m200" \
+            -1 {input.pair[0]} -2 {input.pair[1]} -p {threads} \
+            | bzip2 > {output.sambz2}
+
+            #mpa_v20_m200 is the version of the db that gets downloaded with metaphlan 2.7.5
+            #in the sbx_metaphlan_env.yml
+        """
+
+#################### Helper functions
+
+def metaphlan_make_report(fps_input, fp_output):
+    kos = []
+    for fp in fps_input:
+        # filter out the files that don't have any results
+        if os.path.getsize(fp) > 1:
+            # build pandas dataframes for each file of results
+            kos.append(parse_results(fp,".txt"))
+    # merge the column results
+    kos = pandas.concat(kos, axis=1)
+
+    # write them to file. Replace NAs (due to merging) with 0.
+    kos.to_csv(fp_output, sep='\t', na_rep=0, index_label="Term")
+
+def parse_results(fp, input_suffix):
+    """ Return a DataFrame containing the results of one sample"""
+    sample_name = os.path.basename(fp).rsplit(input_suffix)[0]
+    return pandas.read_csv(fp, sep='\t', index_col=0, names=[sample_name], skiprows=1)
+
+# Chunyu's function to filter to just species-level classifications, excluding
+# strain-level.
+def review_output(raw_fp, output_fp):
+     with open(raw_fp) as f:
+        output_lines = f.read().splitlines(True)
+        
+        if len(output_lines) < 2:
+            raise ValueError("Metaphlan output has fewer than 2 lines.")
+        elif len(output_lines) == 2:
+            revised_output_lines = "".join(output_lines)
+        else:
+            header = output_lines.pop(0)
+            revised_output_lines = [header]
+            for line in output_lines:
+                if (("s__" in line) and not ("t__" in line)) or (("unclassified" in line) and not ("t__" in line)):
+                    revised_output_lines.append(line)
+            revised_output_lines = "".join(revised_output_lines)
+        
+        with open(output_fp, 'w') as f:
+            f.write(revised_output_lines)

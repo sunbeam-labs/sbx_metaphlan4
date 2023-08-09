@@ -1,0 +1,4 @@
+sbx_metaphlan:
+  threads: 8
+  db: "/mnt/isilon/microbiome/analysis/biodata/metaphlan_databases"
+
