@@ -1,8 +1,8 @@
-import csv
 import os
 import pytest
 import shutil
 import subprocess as sp
+import sys
 import tempfile
 
 
@@ -11,6 +11,8 @@ def setup():
     temp_dir = tempfile.mkdtemp()
 
     reads_fp = os.path.abspath(".tests/data/reads/")
+    hosts_fp = os.path.abspath(".tests/data/hosts/")
+    db_fp = os.path.abspath(".tests/data/db/")
 
     project_dir = os.path.join(temp_dir, "project/")
 
@@ -18,8 +20,20 @@ def setup():
 
     config_fp = os.path.join(project_dir, "sunbeam_config.yml")
 
-    config_str = f"sbx_template: {{example_rule_options: '--number'}}"
+    config_str = f"sbx_kraken: {{kraken_db_fp: {db_fp}}}"
+    sp.check_output(
+        [
+            "sunbeam",
+            "config",
+            "modify",
+            "-i",
+            "-s",
+            f"{config_str}",
+            f"{config_fp}",
+        ]
+    )
 
+    config_str = f"qc: {{host_fp: {hosts_fp}}}"
     sp.check_output(
         [
             "sunbeam",
@@ -41,42 +55,48 @@ def setup():
 def run_sunbeam(setup):
     temp_dir, project_dir = setup
 
-    # Run the test job.
-    sp.check_output(
-        [
-            "sunbeam",
-            "run",
-            "--profile",
-            project_dir,
-            "all_template",
-            "--directory",
-            temp_dir,
-        ]
-    )
-
     output_fp = os.path.join(project_dir, "sunbeam_output")
 
-    big_file_fp = os.path.join(output_fp, "qc/mush/big_file.txt")
+    try:
+        # Run the test job
+        sp.check_output(
+            [
+                "sunbeam",
+                "run",
+                "--conda-frontend",
+                "conda",
+                "--profile",
+                project_dir,
+                "all_classify",
+                "--directory",
+                temp_dir,
+            ]
+        )
+    except sp.CalledProcessError as e:
+        shutil.copytree(os.path.join(output_fp, "logs/"), "logs/")
+        shutil.copytree(os.path.join(project_dir, "stats/"), "stats/")
+        sys.exit(e)
+
+    shutil.copytree(os.path.join(output_fp, "logs/"), "logs/")
+    shutil.copytree(os.path.join(project_dir, "stats/"), "stats/")
+
+    all_samples_fp = os.path.join(output_fp, "classify/kraken/all_samples.tsv")
 
     benchmarks_fp = os.path.join(project_dir, "stats/")
 
-    yield big_file_fp, benchmarks_fp
+    yield all_samples_fp, benchmarks_fp
 
 
 def test_full_run(run_sunbeam):
-    big_file_fp, benchmarks_fp = run_sunbeam
+    all_samples_fp, benchmarks_fp = run_sunbeam
 
     # Check output
-    assert os.path.exists(big_file_fp)
+    assert os.path.exists(all_samples_fp)
 
-
-def test_benchmarks(run_sunbeam):
-    big_file_fp, benchmarks_fp = run_sunbeam
-
-    filename = os.listdir(benchmarks_fp)[0]
-    with open(os.path.join(benchmarks_fp, filename)) as f:
-        rd = csv.DictReader(f, delimiter="\t")
-        for r in rd:
-            assert (
-                float(r["cpu_time"]) < 0.5
-            ), f"cpu_time for {r['rule']} is higher than 0.5: {r['cpu_time']}"
+    with open(all_samples_fp) as f:
+        f.readline()
+        f.readline()  # Headers
+        assert (
+            f.readline().strip()
+            == "2\t200.0\tk__Bacteria; p__; c__; o__; f__; g__; s__"
+        )
