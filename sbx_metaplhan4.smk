@@ -81,22 +81,22 @@ rule extract_markers:
     benchmark:
         BENCHMARK_FP / "extract_markers.tsv",
     output: 
-        markers = CLASSIFY_FP/'metaphlan4'/'db_markers'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna'
+        CLASSIFY_FP/'metaphlan4'/'db_markers'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna'
     input:
-        Cfg['sbx_metaphlan4']['profile_strain'] #this might not work because its not used in the shell command
+        pickle = f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl'
     params:
-        dbdir = Cfg['sbx_metaphlan4']['dbdir'],
-        dbname = Cfg['sbx_metaphlan4']['dbname']
+        strain = Cfg['sbx_metaphlan4']['profile_strain'],
+        dbmarkers = CLASSIFY_FP/'metaphlan4'/'db_markers'
     conda:
         "sbx_metaphlan4_env.yml"
     shell:
         """
             extract_markers.py \
-            -d dbdir = {params.dbdir}/{params.dbname}.pkl \
-            -c {input} \
-            -o db_markers/ \
+            -d {input.pickle} \
+            -c {params.strain} \
+            -o {params.dbmarkers} \
             2>&1 | tee {log} && \
-            find db_markers/*temp* -delete
+            find {params.dbmarkers}/*temp* -delete
         """
 
 rule consensus_markers:
@@ -109,6 +109,9 @@ rule consensus_markers:
         CLASSIFY_FP/'metaphlan4'/'consensus_markers'/'{sample}.pkl'
     input:
         CLASSIFY_FP/'metaphlan4'/'sams'/'{sample}.sam.bz2'
+    params:
+        outdir = CLASSIFY_FP/'metaphlan4'/'consensus_markers',
+        pickle = f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl'
     threads:
         Cfg['sbx_metaphlan4']['threads']
     conda:
@@ -117,7 +120,8 @@ rule consensus_markers:
         """
             sample2markers.py \
             -i {input} \
-            -o {output} -n {threads} \
+            -d {params.pickle} \
+            -o {params.outdir} -n {threads} \
             2>&1 | tee {log}
         """
 
@@ -133,6 +137,7 @@ rule build_tree:
         consensus_markers = expand(CLASSIFY_FP/'metaphlan4'/'consensus_markers'/'{sample}.pkl', sample = Samples.keys()),
         db_markers = CLASSIFY_FP/'metaphlan4'/'db_markers'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna'
     params:
+        marker_dir = CLASSIFY_FP/'metaphlan4'/'consensus_markers',
         strain = Cfg['sbx_metaphlan4']['profile_strain'],
         ref_genome = Cfg['sbx_metaphlan4']['reference_genome'] #might need to bzip2 this
     threads:
@@ -141,6 +146,7 @@ rule build_tree:
         "sbx_metaphlan4_env.yml"
     shell:
         """
+            rm -rf {params.marker_dir}/tmp* &&
             strainphlan \
             -s {input.consensus_markers} \
             -m {input.db_markers} \
