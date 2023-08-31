@@ -95,10 +95,11 @@ rule extract_markers:
             -d {input.pickle} \
             -c {params.strain} \
             -o {params.dbmarkers} \
-            2>&1 | tee {log} && \
-            find {params.dbmarkers}/*temp* -delete
+            2>&1 | tee {log}
         """
 
+# need to write this as a python script since it errors out if the sam file is empty
+# basically just need to create an empty .pkl file of the sample with only the contents "[]"
 rule consensus_markers:
     """ extract consensus markers from the samples """
     log:
