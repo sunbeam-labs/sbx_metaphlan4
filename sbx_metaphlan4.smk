@@ -2,8 +2,13 @@
 #
 # Rules for running Metaphlan4
 
-TARGET_METAPHLAN4_REPORT = [CLASSIFY_FP/'metaphlan4'/'metaphlan4_assignments.tsv']
-TARGET_METAPHLAN4_STRAIN = CLASSIFY_FP/'metaphlan4'/'output_tree'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.info'
+TARGET_METAPHLAN4_REPORT = [CLASSIFY_FP / "metaphlan4" / "metaphlan4_assignments.tsv"]
+TARGET_METAPHLAN4_STRAIN = (
+    CLASSIFY_FP
+    / "metaphlan4"
+    / "output_tree"
+    / f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.info'
+)
 
 try:
     BENCHMARK_FP
@@ -14,24 +19,28 @@ try:
 except NameError:
     LOG_FP = output_subdir(Cfg, "logs")
 
+
 rule all_metaphlan4:
     input:
-        TARGET_METAPHLAN4_REPORT,TARGET_METAPHLAN4_STRAIN if Cfg['sbx_metaphlan4']['profile_strain'] else TARGET_METAPHLAN4_REPORT
+        TARGET_METAPHLAN4_REPORT,
+        TARGET_METAPHLAN4_STRAIN
+        if Cfg["sbx_metaphlan4"]["profile_strain"]
+        else TARGET_METAPHLAN4_REPORT,
 
-# rule all_metaphlan4:
-#     input:
-#         TARGET_METAPHLAN4_REPORT
 
 rule taxonomic_assignment_report:
     """ generate metaphlan taxonomic assignment table """
     log:
         LOG_FP / "metaphlan4_report.log",
     benchmark:
-        BENCHMARK_FP / "metaphlan4_report.tsv",
+        BENCHMARK_FP / "metaphlan4_report.tsv"
     output:
-        CLASSIFY_FP/'metaphlan4'/'metaphlan4_assignments.tsv'
+        CLASSIFY_FP / "metaphlan4" / "metaphlan4_assignments.tsv",
     input:
-        expand(CLASSIFY_FP/'metaphlan4'/'profiles'/'{sample}.profiled.txt', sample = Samples.keys())
+        expand(
+            CLASSIFY_FP / "metaphlan4" / "profiles" / "{sample}.profiled.txt",
+            sample=Samples.keys(),
+        ),
     conda:
         "sbx_metaphlan4_env.yml"
     shell:
@@ -41,23 +50,23 @@ rule taxonomic_assignment_report:
             {input} 2>&1 | tee {log}
         """
 
+
 rule metaphlan4_bowtie:
     """ make individual metaphlan profiles with intermediate bowtie outputs """
     log:
         LOG_FP / "metaphlan4_bowtie_{sample}.log",
     benchmark:
-        BENCHMARK_FP / "metaphlan4_bowtie_{sample}.tsv",
-    output: 
-        bt2 = CLASSIFY_FP/'metaphlan4'/'bowtie2out'/'{sample}.bowtie2.bz2',
-        profile = CLASSIFY_FP/'metaphlan4'/'profiles'/'{sample}.profiled.txt',
-        sam = CLASSIFY_FP/'metaphlan4'/'sams'/'{sample}.sam.bz2'
+        BENCHMARK_FP / "metaphlan4_bowtie_{sample}.tsv"
+    output:
+        bt2=CLASSIFY_FP / "metaphlan4" / "bowtie2out" / "{sample}.bowtie2.bz2",
+        profile=CLASSIFY_FP / "metaphlan4" / "profiles" / "{sample}.profiled.txt",
+        sam=CLASSIFY_FP / "metaphlan4" / "sams" / "{sample}.sam.bz2",
     input:
-        pair = expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
+        pair=expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
     params:
-        dbdir = Cfg['sbx_metaphlan4']['dbdir'],
-        dbname = Cfg['sbx_metaphlan4']['dbname']
-    threads:
-        Cfg['sbx_metaphlan4']['threads']
+        dbdir=Cfg["sbx_metaphlan4"]["dbdir"],
+        dbname=Cfg["sbx_metaphlan4"]["dbname"],
+    threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
         "sbx_metaphlan4_env.yml"
     shell:
@@ -74,19 +83,23 @@ rule metaphlan4_bowtie:
             2>&1 | tee {log}
         """
 
+
 rule extract_markers:
     """ extract markers for a given strain """
     log:
         LOG_FP / "extract_markers.log",
     benchmark:
-        BENCHMARK_FP / "extract_markers.tsv",
-    output: 
-        CLASSIFY_FP/'metaphlan4'/'db_markers'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna'
+        BENCHMARK_FP / "extract_markers.tsv"
+    output:
+        CLASSIFY_FP
+        / "metaphlan4"
+        / "db_markers"
+        / f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna',
     input:
-        pickle = f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl'
+        pickle=f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl',
     params:
-        strain = Cfg['sbx_metaphlan4']['profile_strain'],
-        dbmarkers = CLASSIFY_FP/'metaphlan4'/'db_markers'
+        strain=Cfg["sbx_metaphlan4"]["profile_strain"],
+        dbmarkers=CLASSIFY_FP / "metaphlan4" / "db_markers",
     conda:
         "sbx_metaphlan4_env.yml"
     shell:
@@ -98,6 +111,7 @@ rule extract_markers:
             2>&1 | tee {log}
         """
 
+
 # need to write this as a python script since it errors out if the sam file is empty
 # basically just need to create an empty .pkl file of the sample with only the contents "[]"
 rule consensus_markers:
@@ -105,16 +119,15 @@ rule consensus_markers:
     log:
         LOG_FP / "{sample}_consensus_markers.log",
     benchmark:
-        BENCHMARK_FP / "{sample}_consensus_markers.tsv",
-    output: 
-        CLASSIFY_FP/'metaphlan4'/'consensus_markers'/'{sample}.pkl'
+        BENCHMARK_FP / "{sample}_consensus_markers.tsv"
+    output:
+        CLASSIFY_FP / "metaphlan4" / "consensus_markers" / "{sample}.pkl",
     input:
-        CLASSIFY_FP/'metaphlan4'/'sams'/'{sample}.sam.bz2'
+        CLASSIFY_FP / "metaphlan4" / "sams" / "{sample}.sam.bz2",
     params:
-        outdir = CLASSIFY_FP/'metaphlan4'/'consensus_markers',
-        pickle = f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl'
-    threads:
-        Cfg['sbx_metaphlan4']['threads']
+        outdir=CLASSIFY_FP / "metaphlan4" / "consensus_markers",
+        pickle=f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl',
+    threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
         "sbx_metaphlan4_env.yml"
     shell:
@@ -126,23 +139,32 @@ rule consensus_markers:
             2>&1 | tee {log}
         """
 
+
 rule build_tree:
     """ Build the multiple sequence alignment and the phylogenetic tree """
     log:
         LOG_FP / "build_tree.log",
     benchmark:
-        BENCHMARK_FP / "build_tree.tsv",
-    output: 
-        CLASSIFY_FP/'metaphlan4'/'output_tree'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.info'
+        BENCHMARK_FP / "build_tree.tsv"
+    output:
+        CLASSIFY_FP
+        / "metaphlan4"
+        / "output_tree"
+        / f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.info',
     input:
-        consensus_markers = expand(CLASSIFY_FP/'metaphlan4'/'consensus_markers'/'{sample}.pkl', sample = Samples.keys()),
-        db_markers = CLASSIFY_FP/'metaphlan4'/'db_markers'/f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna'
+        consensus_markers=expand(
+            CLASSIFY_FP / "metaphlan4" / "consensus_markers" / "{sample}.pkl",
+            sample=Samples.keys(),
+        ),
+        db_markers=CLASSIFY_FP
+        / "metaphlan4"
+        / "db_markers"
+        / f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna',
     params:
-        marker_dir = CLASSIFY_FP/'metaphlan4'/'consensus_markers',
-        strain = Cfg['sbx_metaphlan4']['profile_strain'],
-        ref_genome = Cfg['sbx_metaphlan4']['reference_genome'] #might need to bzip2 this
-    threads:
-        Cfg['sbx_metaphlan4']['threads']
+        marker_dir=CLASSIFY_FP / "metaphlan4" / "consensus_markers",
+        strain=Cfg["sbx_metaphlan4"]["profile_strain"],
+        ref_genome=Cfg["sbx_metaphlan4"]["reference_genome"],  #might need to bzip2 this
+    threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
         "sbx_metaphlan4_env.yml"
     shell:
