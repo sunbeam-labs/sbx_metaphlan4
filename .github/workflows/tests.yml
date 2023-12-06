@@ -15,14 +15,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         
       - name: Test with Sunbeam
-        uses: sunbeam-labs/sbx_test_action@v0
-        with:
-          sunbeam-version: 'dev'
-          extension-name: 'sunbeam-labs/sbx_template'
-          extension-branch-name: ${{ github.head_ref }}
+        uses: sunbeam-labs/sbx_test_action@v1
 
   test-units:
     name: Run Unittests
@@ -30,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: python -m pip install pytest
