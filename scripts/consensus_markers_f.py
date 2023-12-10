@@ -2,6 +2,7 @@ import bz2
 import pickle
 import subprocess as sp
 
+
 def is_bz2_empty(fp):
     """
     Check if a bz2 file is empty.
@@ -34,7 +35,17 @@ def run_sample2markers(input_fp, output_fp, pickle_fp, output_dir, threads):
         None
     """
     if not is_bz2_empty(input_fp):
-        args = ["sample2markers.py", "-i", input_fp, "-d", pickle_fp, "-o", output_dir, "-n", str(threads)]
+        args = [
+            "sample2markers.py",
+            "-i",
+            input_fp,
+            "-d",
+            pickle_fp,
+            "-o",
+            output_dir,
+            "-n",
+            str(threads),
+        ]
         sp.run(args, check=True)
     else:
         with open(output_fp, "wb") as f_out:

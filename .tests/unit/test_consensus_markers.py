@@ -63,7 +63,9 @@ def test_is_bz2_empty_with_non_empty_file(non_empty_bz2_file):
     assert is_bz2_empty(non_empty_bz2_file) is False
 
 
-def test_run_sample2markers_with_empty_input(empty_bz2_file, output_fp, pickle_fp, output_dir, threads):
+def test_run_sample2markers_with_empty_input(
+    empty_bz2_file, output_fp, pickle_fp, output_dir, threads
+):
     with patch("consensus_markers_f.is_bz2_empty", return_value=True):
         run_sample2markers(empty_bz2_file, output_fp, pickle_fp, output_dir, threads)
 
