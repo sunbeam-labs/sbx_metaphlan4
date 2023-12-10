@@ -130,14 +130,8 @@ rule consensus_markers:
     threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
         "envs/sbx_metaphlan4_env.yml"
-    shell:
-        """
-            sample2markers.py \
-            -i {input} \
-            -d {params.pickle} \
-            -o {params.outdir} -n {threads} \
-            2>&1 | tee {log}
-        """
+    script:
+        "scripts/consensus_markers.py"
 
 
 rule build_tree:
