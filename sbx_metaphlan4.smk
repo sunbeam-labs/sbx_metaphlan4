@@ -42,7 +42,7 @@ rule taxonomic_assignment_report:
             sample=Samples.keys(),
         ),
     conda:
-        "sbx_metaphlan4_env.yml"
+        "envs/sbx_metaphlan4_env.yml"
     shell:
         """
             merge_metaphlan_tables.py \
@@ -68,7 +68,7 @@ rule metaphlan4_bowtie:
         dbname=Cfg["sbx_metaphlan4"]["dbname"],
     threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
-        "sbx_metaphlan4_env.yml"
+        "envs/sbx_metaphlan4_env.yml"
     shell:
         """
             metaphlan {input.pair[0]},{input.pair[1]} \
@@ -101,7 +101,7 @@ rule extract_markers:
         strain=Cfg["sbx_metaphlan4"]["profile_strain"],
         dbmarkers=CLASSIFY_FP / "metaphlan4" / "db_markers",
     conda:
-        "sbx_metaphlan4_env.yml"
+        "envs/sbx_metaphlan4_env.yml"
     shell:
         """
             extract_markers.py \
@@ -129,7 +129,7 @@ rule consensus_markers:
         pickle=f'{Cfg["sbx_metaphlan4"]["dbdir"]}/{Cfg["sbx_metaphlan4"]["dbname"]}.pkl',
     threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
-        "sbx_metaphlan4_env.yml"
+        "envs/sbx_metaphlan4_env.yml"
     shell:
         """
             sample2markers.py \
@@ -166,7 +166,7 @@ rule build_tree:
         ref_genome=Cfg["sbx_metaphlan4"]["reference_genome"],  #might need to bzip2 this
     threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
-        "sbx_metaphlan4_env.yml"
+        "envs/sbx_metaphlan4_env.yml"
     shell:
         """
             rm -rf {params.marker_dir}/tmp* &&
