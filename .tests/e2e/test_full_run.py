@@ -96,6 +96,8 @@ def test_full_run(run_sunbeam):
 
     with open(ecoli0_profile_fp) as f:
         lines = [line.strip() for line in f.readlines() if line and line[0] != "#"]
-        assert lines[-1].split("\t")[0] == "k__Bacteria|p__Proteobacteria|c__Gammaproteobacteria|o__Enterobacterales|f__Enterobacteriaceae|g__Escherichia|s__Escherichia_coli|t__SGB10068"
+        assert (
+            lines[-1].split("\t")[0]
+            == "k__Bacteria|p__Proteobacteria|c__Gammaproteobacteria|o__Enterobacterales|f__Enterobacteriaceae|g__Escherichia|s__Escherichia_coli|t__SGB10068"
+        )
         assert int(lines[-1].split("\t")[2]) >= 95
-
