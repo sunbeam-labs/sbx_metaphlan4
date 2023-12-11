@@ -100,4 +100,4 @@ def test_full_run(run_sunbeam):
             lines[-1].split("\t")[0]
             == "k__Bacteria|p__Proteobacteria|c__Gammaproteobacteria|o__Enterobacterales|f__Enterobacteriaceae|g__Escherichia|s__Escherichia_coli|t__SGB10068"
         )
-        assert int(lines[-1].split("\t")[2]) >= 95
+        assert float(lines[-1].split("\t")[2]) >= 95
