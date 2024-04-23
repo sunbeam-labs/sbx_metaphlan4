@@ -15,7 +15,7 @@ sbx_metaphlan4 is a [sunbeam](https://github.com/sunbeam-labs/sunbeam) extension
 
 Extension install is as simple as passing the extension's URL on GitHub to `sunbeam extend`:
 
-    sunbeam extend https://github.com/scottdaniel/sbx_metaphlan4
+    sunbeam extend https://github.com/sunbeam-labs/sbx_metaphlan4
 
 Any user-modifiable parameters specified in `config.yml` are automatically added on `sunbeam init`. If you're installing an extension in a project where you already have a config file, run the following to add the options for your newly added extension to your config (the `-i` flag means in-place config file modification; remove the `-i` flag to see the new config in stdout):
 
@@ -41,7 +41,7 @@ To run an extension, simply run Sunbeam as usual with your extension's target ru
 
 Installing an extension is as simple as cloning (or moving) your extension directory into the sunbeam/extensions/ folder, installing requirements through Conda, and adding the new options to your existing configuration file: 
 
-    git clone https://github.com/scottdaniel/sbx_metaphlan4 sunbeam/extensions/sbx_metaphlan4
+    git clone https://github.com/sunbeam-labs/sbx_metaphlan4 sunbeam/extensions/sbx_metaphlan4
     cat sunbeam/extensions/sbx_metaphlan4/config.yml >> sunbeam_config.yml
 
 ## Issues with pipeline
