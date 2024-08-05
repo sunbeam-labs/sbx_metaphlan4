@@ -1,4 +1,4 @@
-from consensus_markers import run_sample2markers
+from consensus_markers_f import run_sample2markers
 
 run_sample2markers(
     snakemake.input[0],
