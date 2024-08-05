@@ -155,20 +155,25 @@ rule build_tree:
         / "db_markers"
         / f'{Cfg["sbx_metaphlan4"]["profile_strain"]}.fna',
     params:
+        dbdir=Cfg["sbx_metaphlan4"]["dbdir"],
+        dbname=Cfg["sbx_metaphlan4"]["dbname"],
         marker_dir=CLASSIFY_FP / "metaphlan4" / "consensus_markers",
         strain=Cfg["sbx_metaphlan4"]["profile_strain"],
-        ref_genome=Cfg["sbx_metaphlan4"]["reference_genome"],  #might need to bzip2 this
+        ref_genome=Cfg["sbx_metaphlan4"]["reference_genome"],
+        output_dir=CLASSIFY_FP / "metaphlan4" / "output_tree",
     threads: Cfg["sbx_metaphlan4"]["threads"]
     conda:
         "envs/sbx_metaphlan4_env.yml"
     shell:
         """
             rm -rf {params.marker_dir}/tmp* &&
+            mkdir -p {params.output_dir} && \
             strainphlan \
+            -d {params.dbdir}/{params.dbname}.pkl \
             -s {input.consensus_markers} \
             -m {input.db_markers} \
             -r {params.ref_genome} \
-            -o output_tree -n {threads} \
+            -o {params.output_dir} -n {threads} \
             -c {params.strain} --mutation_rates \
             2>&1 | tee {log}
         """
